@@ -397,6 +397,11 @@ const TILESET_ATTRIBUTES = [
   [new Rect(7 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID]
 ];
 
+/*
+ * Number amount in degrees to rotate each star.
+ */
+const STAR_ANGLE_DELTA = (0.1 / 20.0) * (180 / Math.PI);
+
 class World {
   constructor(level) {
     if ('map' in level) {
@@ -659,7 +664,7 @@ class Bob extends Actor {
   }
 }
 
-let levels, index, bob;
+let levels, index, bob, stars;
 
 function reset() {
   let levelsRaw = JSON.parse(document.querySelector('#levels').textContent);
@@ -670,7 +675,19 @@ function reset() {
 
   index = 0;
 
+  resetLevel();
+}
+
+function resetLevel() {
   bob = new Bob();
+
+  stars = [];
+  for (let [x, y] of levels[index].stars) {
+    let actor = new Actor('star');
+    actor.center = [x, y];
+    actor.angle = 0;
+    stars.push(actor);
+  }
 }
 
 function draw() {
@@ -680,20 +697,40 @@ function draw() {
                   new Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE));
     }
   }
-  for (let [x, y] of levels[index].stars) {
-    screen.blit('star', [x, y]);
+  for (let s of stars) {
+    s.draw();
   }
   bob.draw();
 }
 
 function update(dt) {
+  let toRemove = [],
+      i = 0;
+  for (let s of stars) {
+    s.angle += STAR_ANGLE_DELTA;
+    if (bob.colliderect(s.getBoundingBox())) {
+      toRemove.push(i);
+    }
+    i++;
+  }
+  // Remove stars from the back of the array first
+  toRemove.reverse();
+  for (let j of toRemove) {
+    stars.splice(j, 1);
+  }
+
   bob.update(dt, levels[index]);
+
+  if (stars.length <= 0) {
+    index = (index + 1) % levels.length;
+    resetLevel();
+  }
 }
 
 function on_key_down(key) {
   if (key === keys.M) {
     index = (index + 1) % levels.length;
-    bob = new Bob();
+    resetLevel();
   }
 }
 
