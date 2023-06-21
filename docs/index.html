@@ -664,7 +664,80 @@ class Bob extends Actor {
   }
 }
 
-let levels, index, bob, stars;
+class PointToPoint extends Actor {
+  /*
+   * Integer number of frames per second in the animation.
+   */
+  static FPS = 4;
+
+  constructor(x, y, count) {
+    super('fungus_3');
+    this.center = [x, y];
+
+    this.Xspeed = 0;
+    this.Yspeed = 0;
+
+    this.index = 3;
+    this.elapsed = 0;
+
+    this.Xmin = x;
+    this.Xmax = x + count;
+    this.Dir = 1;
+  }
+
+  update(dt, level) {
+    const Speed = 1.2;
+
+    this.Yspeed += 1.2; // always add gravity to the yspeed, make corrections when you know if you land on something
+
+    // we will discover that just incrementing the index works, but it switches too fast, how can we make that more effective?
+    this.elapsed += dt;
+    if (this.elapsed > (1 / PointToPoint.FPS)) {
+      this.elapsed = 0;
+      if (this.index === 3) {
+        this.index = 4;
+      }
+      else {
+        this.index = 3;
+      }
+    }
+
+    if (this.Dir < 0) {
+      this.posx -= Speed;
+      if (Math.floor(this.posx) <= this.Xmin) {
+        // we don't check for any obstruction since he's placed where it is known there are no obstructions
+        // but to make him more intelligent and allow changes in the map, a test for solid obstructions is a good add
+        this.Dir = 1;
+      }
+    }
+    if (this.Dir > 0) {
+      this.posx += Speed;
+      if (Math.floor(this.posx) >= this.Xmax) {
+        this.Dir = -1;
+      }
+    }
+
+    // check for gravity and get the frame
+    if (this.Yspeed > (9.81 / 4)) {
+      this.Yspeed = 9.81 / 4;
+    }
+    this.posy += this.Yspeed;
+
+    let YMap = Math.floor((this.posy + TILE_SIZE) / TILE_SIZE),
+        XMap = Math.floor(this.posx / TILE_SIZE),
+        attribute = level.getAttributeAt(XMap, YMap);
+
+    if (((attribute & ATTRIBUTES.SOLID) !== 0) && (this.Yspeed >= 0)) {
+      // if we find we landed on something, null the speed and set our feet on top of the blocks
+      this.posy = (YMap * TILE_SIZE) - TILE_SIZE;
+      this.Yspeed = 0;
+    }
+
+    this.name = 'fungus_' + this.index;
+  }
+}
+
+let levels, index, bob, stars, enemies;
 
 function reset() {
   let levelsRaw = JSON.parse(document.querySelector('#levels').textContent);
@@ -688,6 +761,11 @@ function resetLevel() {
     actor.angle = 0;
     stars.push(actor);
   }
+
+  enemies = [
+    new PointToPoint(ENEMY_COORDINATES[0][0], ENEMY_COORDINATES[0][1], 50),
+    new PointToPoint(ENEMY_COORDINATES[1][0], ENEMY_COORDINATES[1][1], 350)
+  ];
 }
 
 function draw() {
@@ -696,6 +774,9 @@ function draw() {
       screen.blit('tileset', levels[index].getSpriteAt(x, y),
                   new Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE));
     }
+  }
+  for (let e of enemies) {
+    e.draw();
   }
   for (let s of stars) {
     s.draw();
@@ -717,6 +798,10 @@ function update(dt) {
   toRemove.reverse();
   for (let j of toRemove) {
     stars.splice(j, 1);
+  }
+
+  for (let e of enemies) {
+    e.update(dt, levels[index]);
   }
 
   bob.update(dt, levels[index]);
