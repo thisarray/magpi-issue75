@@ -337,7 +337,7 @@ const ENEMY_COORDINATES = [
   [280, 280],
   [280, 80],
   [380, 80],
-  [480, 28]
+  [480, 280]
 ];
 
 /*
@@ -610,7 +610,7 @@ class Bob extends Actor {
       // but also if we are currently climbing, make sure we are still on a ladder, and if, not stop climbing and revert to normal walk mode
       if (this.climbing) {
         this.frames = Bob.CLIMB;
-        this.index = (this.index + 1) % this.frames.length;
+        this.index = (this.index + (this.frames.length - 1)) % this.frames.length;
         this.name = this.frames[this.index];
         this.posy += Bob.SPEED;
 
@@ -645,12 +645,14 @@ class Bob extends Actor {
   testClimbDown(level) {
     let YMap = Math.floor((this.posy + (TILE_SIZE * 2)) / TILE_SIZE),
         XMap = Math.floor((this.posx - 2) / TILE_SIZE),
-        attribute = level.getAttributeAt(XMap, YMap);
+        attribute;
 
     if (YMap > (MAP_HEIGHT - 1)) {
       // don't allow a test outside the map area
       return false;
     }
+
+    attribute = level.getAttributeAt(XMap, YMap);
 
     if ((attribute & ATTRIBUTES.LADDER) === 0) {
       // test for ladder
@@ -737,7 +739,112 @@ class PointToPoint extends Actor {
   }
 }
 
-let levels, index, bob, stars, enemies;
+/*
+ * Wait and chase is simply testing to see how far Bob is, if he's close he wakes up, if he gets closer he chases him
+ */
+class WaitAndChase extends Actor {
+  constructor(x, y) {
+    super('fungus_3');
+    this.center = [x, y];
+
+    this.Xspeed = 0;
+    this.Yspeed = 0;
+
+    this.moving = false;
+    this.index = 3;
+
+    this.Dir = 1;
+  }
+
+  /*
+   * A small helper function which returns the distance this object is from the Bob player
+   */
+  getDistance(bob) {
+    return Math.hypot(bob.posx - this.posx, bob.posy - this.posy);
+  }
+
+  update(dt, level, bob) {
+    const Speed = 1.2;
+
+    this.Yspeed += 1.2;
+
+    // lets check if he's moving if not should we make him
+    let distance = this.getDistance(bob);
+    if (!this.moving) {
+      this.index = 1;
+      if (distance < (TILE_SIZE * 8)) {
+        // pop up and show interest
+        this.index = 2;
+      }
+      if (distance < (TILE_SIZE * 5)) {
+        this.moving = true;
+        this.Dir = (bob.posx > this.posx) ? 1 : -1;
+      }
+    }
+    else {
+      if (distance > (TILE_SIZE * 8)) {
+        // reset to wait if far away
+        this.moving = false;
+      }
+
+      this.index = 3;  // we are walking
+
+      // we're moving so do the directional switches
+      if (this.Dir < 0) {
+        this.posx -= Speed;
+        // now we check for possible obstacles
+        // we will scan from the top to the bottom of the sprite
+        let YMap = Math.floor((this.posy - TILE_SIZE) / TILE_SIZE),
+            XMap = Math.floor((this.posx - TILE_SIZE) / TILE_SIZE),
+            attribute;
+        for (let i = 0; i < (32 / TILE_SIZE); i++, YMap++) {
+          // 32 is the height of the character (it might however be variable)
+          attribute = level.getAttributeAt(XMap, YMap);
+          if ((attribute & ATTRIBUTES.SOLID) !== 0) {
+            this.Dir = 1;
+            break; // break the loop we are done
+          }
+        }
+      }
+      if (this.Dir > 0) {
+        this.posx += Speed;
+        // now we check for possible obstacles
+        let YMap = Math.floor((this.posy - TILE_SIZE) / TILE_SIZE),
+            XMap = Math.floor((this.posx + 1 + TILE_SIZE) / TILE_SIZE),
+            attribute;
+        for (let i = 0; i < (32 / TILE_SIZE); i++) {
+          attribute = level.getAttributeAt(XMap, YMap);
+          if ((attribute & ATTRIBUTES.SOLID) !== 0) {
+            this.Dir = -1;
+            break; // break the loop we are done
+          }
+          YMap++;  // move down to the next
+        }
+      }
+    }
+
+    // check for gravity and get the frame
+    if (this.Yspeed > (9.81 / 4)) {
+      this.Yspeed = 9.81 / 4;
+    }
+    this.posy += this.Yspeed;
+
+    // we could also choose to not let him fall!
+    let YMap = Math.floor((this.posy + 1 + TILE_SIZE) / TILE_SIZE),
+        XMap = Math.floor((this.posx + Math.floor(TILE_SIZE / 2)) / TILE_SIZE),
+        attribute = level.getAttributeAt(XMap, YMap);
+
+    // lets make him land a bit better
+    if (((attribute & ATTRIBUTES.SOLID) !== 0) && (this.Yspeed >= 0)) {
+      this.posy = (YMap * TILE_SIZE) - TILE_SIZE;
+      this.Yspeed = 0;
+    }
+
+    this.name = 'fungus_' + this.index;
+  }
+}
+
+let levels, index, bob, stars, enemies, timer;
 
 function reset() {
   let levelsRaw = JSON.parse(document.querySelector('#levels').textContent);
@@ -754,6 +861,8 @@ function reset() {
 function resetLevel() {
   bob = new Bob();
 
+  // Star is a simple pickup, it does nothing except rotate and look cute, and test if it's been picked up by Bob
+  // it ignores collision with any other object
   stars = [];
   for (let [x, y] of levels[index].stars) {
     let actor = new Actor('star');
@@ -764,8 +873,13 @@ function resetLevel() {
 
   enemies = [
     new PointToPoint(ENEMY_COORDINATES[0][0], ENEMY_COORDINATES[0][1], 50),
-    new PointToPoint(ENEMY_COORDINATES[1][0], ENEMY_COORDINATES[1][1], 350)
+    new PointToPoint(ENEMY_COORDINATES[1][0], ENEMY_COORDINATES[1][1], 350),
+    new WaitAndChase(ENEMY_COORDINATES[2][0], ENEMY_COORDINATES[2][1]),
+    new WaitAndChase(ENEMY_COORDINATES[3][0], ENEMY_COORDINATES[3][1])
   ];
+
+  // we will keep a small count down (0.5 second) when we have collected all stars
+  timer = 0.500;
 }
 
 function draw() {
@@ -801,14 +915,17 @@ function update(dt) {
   }
 
   for (let e of enemies) {
-    e.update(dt, levels[index]);
+    e.update(dt, levels[index], bob);
   }
 
   bob.update(dt, levels[index]);
 
   if (stars.length <= 0) {
-    index = (index + 1) % levels.length;
-    resetLevel();
+    timer -= dt;
+    if (timer <= 0) {
+      index = (index + 1) % levels.length;
+      resetLevel();
+    }
   }
 }
 
