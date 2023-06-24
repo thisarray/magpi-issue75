@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bob</title>
-  <script src="../../jsgame0.js"></script>
+  <script src="../jsgame0.js"></script>
   <script id="levels" type="application/json">
 [
   {
@@ -321,9 +321,20 @@ The game screen appears here if your browser supports the Canvas API.
   <button type="button" id="pause">Pause</button>
 </section>
 
+<p>Use the arrow keys to move Bob and collect the stars.</p>
+
+<p>Press "M" to advance to the next level.
+<br>One level is impossible due to the 3 tile gap between platforms.</p>
+
 <h2>Attribution</h2>
 
-<p>Bob platformer CGame from <a href="https://magpi.raspberrypi.com/issues/75">MagPi issue 75</a>.</p>
+<p>Bob simple platform game from</p>
+
+<ul>
+  <li><a href="https://magpi.raspberrypi.com/issues/71">Coding Games on the Raspberry Pi in C/C++ Part 07, pages 60 - 62 in The MagPi issue 71</a> by Brian Beuken.</li>
+  <li><a href="https://magpi.raspberrypi.com/issues/72">Coding Games on the Raspberry Pi in C/C++ Part 08, pages 60 - 63 in The MagPi issue 72</a> by Brian Beuken.</li>
+  <li><a href="https://magpi.raspberrypi.com/issues/73">Coding Games on the Raspberry Pi in C/C++ Part 09, pages 56 - 59 in The MagPi issue 73</a> by Brian Beuken.</li>
+</ul>
 
 <p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
 
@@ -396,6 +407,10 @@ const TILESET_ATTRIBUTES = [
   [new Rect(6 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.LADDER],
   [new Rect(7 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID]
 ];
+
+const GRAVITY = 9.81;
+
+const SPEED = 1.2;
 
 /*
  * Number amount in degrees to rotate each star.
@@ -485,8 +500,6 @@ class World {
 }
 
 class Bob extends Actor {
-  static SPEED = 1.2;
-
   /*
    * Array of string names of the images making up the frames in climbing.
    */
@@ -506,7 +519,6 @@ class Bob extends Actor {
     super(Bob.WALK_RIGHT[0]);
     this.center = [120, 160];
 
-    this.Xspeed = 0;
     this.Yspeed = 0;
 
     this.frames = Bob.WALK_RIGHT;
@@ -521,9 +533,9 @@ class Bob extends Actor {
       this.Yspeed = 0;
     }
     else {
-      this.Yspeed += Bob.SPEED;
-      if (this.Yspeed > 9.81) {
-        this.Yspeed = 9.81;
+      this.Yspeed += SPEED;
+      if (this.Yspeed > GRAVITY) {
+        this.Yspeed = GRAVITY;
       }
       this.posy += this.Yspeed;
     }
@@ -552,7 +564,7 @@ class Bob extends Actor {
 
       if ((attribute & ATTRIBUTES.SOLID) === 0) {
         // both need to be not solid to move
-        this.posx += Bob.SPEED * 2;
+        this.posx += SPEED * 2;
       }
     }
 
@@ -567,7 +579,7 @@ class Bob extends Actor {
       attribute = level.getAttributeAt(XMap, YMap);
 
       if ((attribute & ATTRIBUTES.SOLID) === 0) {
-        this.posx -= Bob.SPEED * 2;
+        this.posx -= SPEED * 2;
       }
     }
 
@@ -580,7 +592,7 @@ class Bob extends Actor {
     if (keyboard[keys.UP]) {
       // this is the climb
       if (this.climbing) {
-        this.Yspeed = -Bob.SPEED;
+        this.Yspeed = -SPEED;
         this.frames = Bob.CLIMB;
         this.index = (this.index + 1) % this.frames.length;
         this.name = this.frames[this.index];
@@ -596,7 +608,7 @@ class Bob extends Actor {
           this.climbing = true;
         }
         if (((attribute & ATTRIBUTES.SOLID) !== 0) && (this.Yspeed >= 0)) {
-          this.Yspeed = -Bob.SPEED * 8;
+          this.Yspeed = -SPEED * 8;
         }
       }
     }
@@ -612,11 +624,11 @@ class Bob extends Actor {
         this.frames = Bob.CLIMB;
         this.index = (this.index + (this.frames.length - 1)) % this.frames.length;
         this.name = this.frames[this.index];
-        this.posy += Bob.SPEED;
+        this.posy += SPEED;
 
         if ((attribute & ATTRIBUTES.LADDER) !== 0) {
           this.climbing = false;
-          this.Yspeed = Bob.SPEED;
+          this.Yspeed = SPEED;
         }
       }
       else {
@@ -676,7 +688,6 @@ class PointToPoint extends Actor {
     super('fungus_3');
     this.center = [x, y];
 
-    this.Xspeed = 0;
     this.Yspeed = 0;
 
     this.index = 3;
@@ -688,9 +699,7 @@ class PointToPoint extends Actor {
   }
 
   update(dt, level) {
-    const Speed = 1.2;
-
-    this.Yspeed += 1.2; // always add gravity to the yspeed, make corrections when you know if you land on something
+    this.Yspeed += SPEED; // always add gravity to the yspeed, make corrections when you know if you land on something
 
     // we will discover that just incrementing the index works, but it switches too fast, how can we make that more effective?
     this.elapsed += dt;
@@ -705,7 +714,7 @@ class PointToPoint extends Actor {
     }
 
     if (this.Dir < 0) {
-      this.posx -= Speed;
+      this.posx -= SPEED;
       if (Math.floor(this.posx) <= this.Xmin) {
         // we don't check for any obstruction since he's placed where it is known there are no obstructions
         // but to make him more intelligent and allow changes in the map, a test for solid obstructions is a good add
@@ -713,15 +722,15 @@ class PointToPoint extends Actor {
       }
     }
     if (this.Dir > 0) {
-      this.posx += Speed;
+      this.posx += SPEED;
       if (Math.floor(this.posx) >= this.Xmax) {
         this.Dir = -1;
       }
     }
 
     // check for gravity and get the frame
-    if (this.Yspeed > (9.81 / 4)) {
-      this.Yspeed = 9.81 / 4;
+    if (this.Yspeed > (GRAVITY / 4)) {
+      this.Yspeed = GRAVITY / 4;
     }
     this.posy += this.Yspeed;
 
@@ -747,7 +756,6 @@ class WaitAndChase extends Actor {
     super('fungus_3');
     this.center = [x, y];
 
-    this.Xspeed = 0;
     this.Yspeed = 0;
 
     this.moving = false;
@@ -764,9 +772,7 @@ class WaitAndChase extends Actor {
   }
 
   update(dt, level, bob) {
-    const Speed = 1.2;
-
-    this.Yspeed += 1.2;
+    this.Yspeed += SPEED;
 
     // lets check if he's moving if not should we make him
     let distance = this.getDistance(bob);
@@ -791,7 +797,7 @@ class WaitAndChase extends Actor {
 
       // we're moving so do the directional switches
       if (this.Dir < 0) {
-        this.posx -= Speed;
+        this.posx -= SPEED;
         // now we check for possible obstacles
         // we will scan from the top to the bottom of the sprite
         let YMap = Math.floor((this.posy - TILE_SIZE) / TILE_SIZE),
@@ -807,7 +813,7 @@ class WaitAndChase extends Actor {
         }
       }
       if (this.Dir > 0) {
-        this.posx += Speed;
+        this.posx += SPEED;
         // now we check for possible obstacles
         let YMap = Math.floor((this.posy - TILE_SIZE) / TILE_SIZE),
             XMap = Math.floor((this.posx + 1 + TILE_SIZE) / TILE_SIZE),
@@ -824,8 +830,8 @@ class WaitAndChase extends Actor {
     }
 
     // check for gravity and get the frame
-    if (this.Yspeed > (9.81 / 4)) {
-      this.Yspeed = 9.81 / 4;
+    if (this.Yspeed > (GRAVITY / 4)) {
+      this.Yspeed = GRAVITY / 4;
     }
     this.posy += this.Yspeed;
 
