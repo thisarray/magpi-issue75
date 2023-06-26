@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bat and Ball</title>
+  <script src="../jsgame0.js"></script>
+  <style type="text/css" media="screen">
+body {
+  background-color: white;
+  color: black;
+}
+.hidden {
+  display: none;
+}
+#original {
+  margin-left: 1em;
+}
+  </style>
+</head>
+
+<body>
+<section id="imageLoader" class="hidden">
+  <img class="hidden" src="images/tileset.png" alt="tileset" data-name="tileset">
+</section>
+
+<main>
+<h1>Bat and Ball</h1>
+
+<canvas id="screen">
+The game screen appears here if your browser supports the Canvas API.
+</canvas>
+<section id="controls">
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="pause">Pause</button>
+</section>
+
+<p>Use the left and right keys to move the paddle.</p>
+
+<p>The balls multiply very quickly.</p>
+
+<h2>Attribution</h2>
+
+<p>Bat and ball game from <a href="https://magpi.raspberrypi.com/issues/69">Coding Games on the Raspberry Pi in C/C++ Part 05, pages 54 - 57 in The MagPi issue 69</a> by Brian Beuken.</p>
+
+<p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
+
+</main>
+
+<script>
+/*
+ * Array of tile integers making up the map.
+ */
+const TILE_MAP = [
+  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+];
+
+/*
+ * Integer number of columns in each map.
+ */
+const MAP_WIDTH = 64;
+
+/*
+ * Integer number of rows in each map.
+ */
+const MAP_HEIGHT = 40;
+
+/*
+ * Integer length of the map tile array.
+ */
+const MAP_LENGTH = MAP_WIDTH * MAP_HEIGHT;
+
+/*
+ * Integer width and height in pixels of each tile.
+ */
+const TILE_SIZE = 16;
+
+WIDTH = MAP_WIDTH * TILE_SIZE;
+HEIGHT = MAP_HEIGHT * TILE_SIZE;
+
+/*
+ * An enumeration of possible attributes for each tile.
+ */
+const ATTRIBUTES = Object.freeze({
+  NONE: 0,
+  SOLID: 1,
+  LADDER: 2,
+  WATER: 4,
+  METAL: 8,
+  EARTH: 16
+});
+
+/*
+ * Map each tile integer to its position in the spritesheet and its attribute.
+ */
+const TILESET_ATTRIBUTES = [
+  [new Rect(0, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.NONE],
+  [new Rect(1 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(2 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(3 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(4 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.METAL + ATTRIBUTES.SOLID],
+  [new Rect(5 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.WATER],
+  [new Rect(6 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.WATER],
+  [new Rect(7 * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(0, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(1 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(2 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(3 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(4 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.NONE],
+  [new Rect(5 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID],
+  [new Rect(6 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.LADDER],
+  [new Rect(7 * TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE), ATTRIBUTES.SOLID]
+];
+
+/*
+ * Rect object to the screen area.
+ */
+const BORDER = new Rect(TILE_SIZE, TILE_SIZE, WIDTH - (TILE_SIZE * 2), HEIGHT - (TILE_SIZE * 2));
+
+/*
+ * Integer limit on the number of balls to avoid overwhelming the browser.
+ */
+const LIMIT = 32;
+
+class World {
+  constructor() {
+    console.assert(TILE_MAP.length === MAP_LENGTH);
+    this.tiles = new Uint8ClampedArray(TILE_MAP.slice(0, MAP_LENGTH));
+  }
+
+  get width() {
+    return MAP_WIDTH;
+  }
+  get height() {
+    return MAP_HEIGHT;
+  }
+
+  /*
+   * Return the index of the tile at coordinates (x, y).
+   */
+  _coordinatesToIndex(x, y) {
+    return (x + (y * this.width));
+  }
+
+  /*
+   * Return the Rect object in the spritesheet for the tile at coordinates (x, y).
+   */
+  getSpriteAt(x = 0, y = 0) {
+    return TILESET_ATTRIBUTES[this.getTileAt(x, y)][0];
+  }
+
+  /*
+   * Return the tile integer at coordinates (x, y).
+   */
+  getTileAt(x = 0, y = 0, fallback = 0) {
+    if (typeof x !== 'number') {
+      throw new TypeError('x must be a number.');
+    }
+    if (typeof y !== 'number') {
+      throw new TypeError('y must be a number.');
+    }
+
+    if ((0 <= x) && (x < this.width) &&
+        (0 <= y) && (y < this.height)) {
+      return this.tiles[this._coordinatesToIndex(x, y)];
+    }
+    return fallback;
+  }
+}
+
+class Ball {
+  constructor(x, y, Xspeed, Yspeed) {
+    this.x = x;
+    this.y = y;
+    this.Xspeed = Xspeed;
+    this.Yspeed = Yspeed;
+    this.radius = Math.floor(TILE_SIZE / 2);
+    this.delay = 0;
+    this.hitDebounce = 0;
+  }
+
+  draw() {
+    screen.draw.filled_circle([this.x, this.y], this.radius, 'yellow');
+  }
+
+  update(dt, world, balls) {
+    this.x += this.Xspeed;
+    this.y += this.Yspeed;
+
+    let top = this.y - this.radius,
+        right = this.x + this.radius,
+        bottom = this.y + this.radius,
+        left = this.x - this.radius,
+        GridX = Math.floor(this.x / TILE_SIZE),
+        GridY = Math.floor(this.y / TILE_SIZE),
+        ballRect = new Rect(left, top, this.radius * 2, this.radius * 2);
+
+    // this week just make the ball bounce around
+    if (top < BORDER.top) {
+      this.Yspeed = -this.Yspeed;
+    }
+    if (right > BORDER.right) {
+      this.Xspeed = -this.Xspeed;
+    }
+    if (bottom > BORDER.bottom) {
+      this.Yspeed = -this.Yspeed;
+    }
+    if (left < BORDER.left) {
+      this.Xspeed = -this.Xspeed;
+    }
+
+    // but we can test what's under the ball and use that to do cool things
+    if ((balls.length < LIMIT) && (world.getTileAt(GridX, GridY) === 8) && (this.delay <= 0)) {
+      // create 2 new balls
+      balls.push(new Ball(this.x, this.y, -this.Xspeed * 1.5, -this.Yspeed * 1.5));
+      // lets make another, slightly different
+      // for variety don't make two exactly alike
+      balls.push(new Ball(this.x, this.y, this.Xspeed * 1.2, -this.Yspeed * 1.2));
+
+      this.delay = 4; // add a little delay time before we do this again
+    }
+    this.delay -= dt;
+
+    // so it's a bat ball game, we have to make sure we hit the bat, if so change the ball's yspeed
+    // this is just a simple basic test, it needs more refinement but we'll do that later
+    if (paddle.colliderect(ballRect) && (this.hitDebounce <= 0)) {
+      this.Yspeed = -this.Yspeed;
+      this.hitDebounce = 3; // wait 3 frames before doing this again
+    }
+    if (this.hitDebounce !== 0) {
+      this.hitDebounce--;
+    }
+  }
+}
+
+class Paddle extends Actor {
+  constructor() {
+    super('tileset');
+    this.topleft = [31 * TILE_SIZE, 34 * TILE_SIZE];
+  }
+
+  get width() {
+    return TILE_SIZE * 2;
+  }
+  get height() {
+    return TILE_SIZE;
+  }
+
+  draw() {
+    screen.blit('tileset', TILESET_ATTRIBUTES[3][0], new Rect(this.x, this.y, TILE_SIZE, TILE_SIZE));
+    screen.blit('tileset', TILESET_ATTRIBUTES[3][0], new Rect(this.x + TILE_SIZE, this.y, TILE_SIZE, TILE_SIZE));
+  }
+}
+
+let world, paddle, balls;
+
+function reset() {
+  world = new World();
+  paddle = new Paddle();
+  balls = [
+    new Ball(200, 200, -6, 6)
+  ];
+}
+
+function draw() {
+  for (let y = 0; y < world.height; y++) {
+    for (let x = 0; x < world.width; x++) {
+      screen.blit('tileset', world.getSpriteAt(x, y),
+                  new Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE));
+    }
+  }
+  paddle.draw();
+  for (let b of balls) {
+    b.draw();
+  }
+}
+
+function update(dt) {
+  // Loop through a copy of balls because it may be updated
+  for (let b of balls.slice()) {
+    b.update(dt, world, balls);
+  }
+}
+
+function on_key_down(key) {
+  if (key === keys.LEFT) {
+    paddle.left -= TILE_SIZE;
+    if (paddle.left < BORDER.left) {
+      paddle.left = BORDER.left;
+    }
+  }
+  if (key === keys.RIGHT) {
+    paddle.right += TILE_SIZE;
+    if (paddle.right > BORDER.right) {
+      paddle.right = BORDER.right;
+    }
+  }
+}
+
+window.addEventListener('load', (event) => {
+  screen.init();
+});
+</script>
+</body>
+
+</html>
